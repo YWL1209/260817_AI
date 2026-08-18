@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Study Schedule Optimizer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f6f5f4;
+            color: #1a1a1a;
+            padding: 24px;
+            line-height: 1.55;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            background: #0a1530;
+            color: #ffffff;
+            padding: 48px 32px;
+            border-radius: 12px;
+            margin-bottom: 32px;
+            text-align: center;
+            position: relative;
+        }
+
+        .header h1 {
+            font-size: 36px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            line-height: 1.2;
+        }
+
+        .header p {
+            font-size: 14px;
+            color: #a4a097;
+        }
+
+        .header-status {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 12px;
+            padding: 6px 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+        }
+
+        .header-status.connected {
+            background: rgba(26, 174, 57, 0.2);
+            color: #1aae39;
+        }
+
+        .header-status.disconnected {
+            background: rgba(224, 49, 49, 0.2);
+            color: #e03131;
+        }
+
+        /* Form Section */
+        .form-section {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 32px;
+            border: 1px solid #e5e3df;
+            margin-bottom: 32px;
+        }
+
+        .form-section h2 {
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            color: #1a1a1a;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+            position: relative;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: #37352f;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #c8c4be;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color 0.15s;
+            background: #ffffff;
+            color: #1a1a1a;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #5645d4;
+            box-shadow: 0 0 0 2px rgba(86, 69, 212, 0.1);
+        }
+
+        .suggestions-list {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #ffffff;
+            border: 1px solid #e5e3df;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 10;
+            display: none;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .suggestions-list.show {
+            display: block;
+        }
+
+        .suggestion-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            border-bottom: 1px solid #ede9e4;
+            font-size: 14px;
+            color: #37352f;
+            transition: background-color 0.15s;
+        }
+
+        .suggestion-item:hover {
+            background-color: #f6f5f4;
+        }
+
+        .suggestion-item:last-child {
+            border-bottom: none;
+        }
+
+        .suggestion-item strong {
+            color: #5645d4;
+            font-weight: 600;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .form-row-3 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 16px;
+        }
+
+        @media (max-width: 768px) {
+            .form-row, .form-row-3 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 28px;
+        }
+
+        button {
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background: #5645d4;
+            color: #ffffff;
+        }
+
+        .btn-primary:hover {
+            background: #4534b3;
+        }
+
+        .btn-primary:disabled {
+            background: #e5e3df;
+            color: #bbb8b1;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: #1a1a1a;
+            border: 1px solid #c8c4be;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background-color: #ffffff;
+            padding: 32px;
+            border-radius: 12px;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .modal-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 12px;
+        }
+
+        .modal-message {
+            font-size: 14px;
+            color: #5d5b54;
+            margin-bottom: 8px;
+            line-height: 1.6;
+        }
+
+        .modal-detail {
+            font-size: 13px;
+            color: #787671;
+            background: #f6f5f4;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 16px 0;
+        }
+
+        .modal-button {
+            background: #5645d4;
+            color: #ffffff;
+            margin-top: 20px;
+            cursor: pointer;
+        }
+
+        .modal-button:hover {
+            background: #4534b3;
+        }
+
+        /* Calendar Section */
+        .calendar-section {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 32px;
+            border: 1px solid #e5e3df;
+            display: none;
+        }
+
+        .calendar-section.active {
+            display: block;
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 28px;
+        }
+
+        .calendar-header h2 {
+            font-size: 22px;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+
+        .month-nav {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .month-nav button {
+            padding: 8px 12px;
+            background: #f6f5f4;
+            border: 1px solid #e5e3df;
+        }
+
+        .month-display {
+            font-size: 16px;
+            font-weight: 500;
+            min-width: 120px;
+            text-align: center;
+        }
+
+        /* Calendar Grid */
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background: #e5e3df;
+            margin-bottom: 32px;
+            padding: 1px;
+        }
+
+        .day-header {
+            background: #f6f5f4;
+            padding: 12px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 13px;
+            color: #787671;
+        }
+
+        .calendar-day {
+            background: #ffffff;
+            min-height: 140px;
+            padding: 12px;
+            position: relative;
+            overflow-y: auto;
+        }
+
+        .calendar-day.other-month {
+            background: #fafaf9;
+        }
+
+        .day-number {
+            font-size: 13px;
+            font-weight: 600;
+            color: #37352f;
+            margin-bottom: 8px;
+        }
+
+        .day-number.other-month {
+            color: #bbb8b1;
+        }
+
+        .schedule-item {
+            font-size: 11px;
+            font-weight: 500;
+            padding: 4px 6px;
+            border-radius: 4px;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: #ffffff;
+            cursor: pointer;
+            transition: opacity 0.15s;
+        }
+
+        .schedule-item:hover {
+            opacity: 0.9;
+        }
+
+        .schedule-item.color-0 { background: #5645d4; }
+        .schedule-item.color-1 { background: #dd5b00; }
+        .schedule-item.color-2 { background: #1aae39; }
+        .schedule-item.color-3 { background: #0075de; }
+        .schedule-item.color-4 { background: #a02e6d; }
+        .schedule-item.color-5 { background: #2a9d99; }
+
+        /* Task List */
+        .task-list-section {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 32px;
+            border: 1px solid #e5e3df;
+        }
+
+        .task-list-section h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #1a1a1a;
+        }
+
+        .task-item {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            border-left: 4px solid;
+            background: #fafaf9;
+        }
+
+        .task-item.color-0 { border-left-color: #5645d4; }
+        .task-item.color-1 { border-left-color: #dd5b00; }
+        .task-item.color-2 { border-left-color: #1aae39; }
+        .task-item.color-3 { border-left-color: #0075de; }
+        .task-item.color-4 { border-left-color: #a02e6d; }
+        .task-item.color-5 { border-left-color: #2a9d99; }
+
+        .task-item-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+
+        .task-item-name {
+            font-weight: 600;
+            font-size: 13px;
+            color: #1a1a1a;
+        }
+
+        .task-item-deadline {
+            font-size: 12px;
+            color: #787671;
+        }
+
+        .task-item-detail {
+            font-size: 12px;
+            color: #5d5b54;
+            margin-top: 4px;
+        }
+
+        .delete-btn {
+            background: none;
+            border: none;
+            color: #787671;
+            cursor: pointer;
+            padding: 0;
+            font-size: 14px;
+        }
+
+        /* Alert */
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-bottom: 16px;
+            display: none;
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .alert-danger {
+            background: #ffe0e0;
+            color: #a02e6d;
+            border: 1px solid #ff99b2;
+        }
+
+        .alert-success {
+            background: #d9f3e1;
+            color: #0f5e2e;
+            border: 1px solid #95d5ac;
+        }
+
+        .alert-info {
+            background: #dcecfa;
+            color: #0075de;
+            border: 1px solid #95c9ed;
+        }
+
+        .daily-study-info {
+            background: #f6f5f4;
+            padding: 16px;
+            border-radius: 8px;
+            margin-top: 20px;
+            border-left: 4px solid #5645d4;
+        }
+
+        .daily-study-info-text {
+            font-size: 13px;
+            color: #37352f;
+            line-height: 1.6;
+        }
+
+        .daily-study-info-text strong {
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid #5645d4;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 0.6s linear infinite;
+            margin-right: 6px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .calendar-day {
+                min-height: 100px;
+            }
+
+            .form-row-3 {
+                grid-template-columns: 1fr;
+            }
+
+            .modal-content {
+                margin: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-status disconnected" id="connectionStatus">
+                <span class="loading-spinner"></span>연결 중...
+            </div>
+            <h1>📅 Study Schedule Optimizer</h1>
+            <p>캘린더로 학업 일정을 효율적으로 관리하세요</p>
+        </div>
+
+        <!-- Alert -->
+        <div id="alert" class="alert"></div>
+
+        <!-- Modal -->
+        <div id="impossibleModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-icon">⚠️</div>
+                <div class="modal-title">불가능한 일정입니다!</div>
+                <div class="modal-message">주어진 시간 내에 이 과제를 완료할 수 없습니다.</div>
+                <div class="modal-detail" id="modalDetail"></div>
+                <button class="modal-button" onclick="closeModal()">확인</button>
+            </div>
+        </div>
+
+        <!-- Form Section -->
+        <div class="form-section">
+            <h2>할 일 추가</h2>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="dailyStudyHours">📚 하루 공부 시간 (시간)</label>
+                    <input type="number" id="dailyStudyHours" min="0.5" step="0.5" placeholder="예: 3" value="3">
+                </div>
+            </div>
+
+            <div class="daily-study-info">
+                <div class="daily-study-info-text">
+                    💡 팁: 하루에 <strong id="dailyHourDisplay">3</strong>시간씩 공부할 수 있을 때, 남은 날 수와 함께 고려되어 최적의 일정이 배정됩니다.
+                </div>
+            </div>
+
+            <hr style="margin: 24px 0; border: none; border-top: 1px solid #e5e3df;">
+
+            <h2 style="margin-bottom: 24px;">과제/시험 추가</h2>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="subject">과목명</label>
+                    <input type="text" id="subject" placeholder="예: 데이터베이스" autocomplete="off">
+                    <div class="suggestions-list" id="subjectSuggestions"></div>
+                </div>
+                <div class="form-group">
+                    <label for="task">할 일</label>
+                    <input type="text" id="task" placeholder="예: 중간고사">
+                </div>
+            </div>
+
+            <div class="form-row-3">
+                <div class="form-group">
+                    <label for="deadline">마감 날짜</label>
+                    <input type="date" id="deadline">
+                </div>
+                <div class="form-group">
+                    <label for="time">마감 시간</label>
+                    <input type="time" id="time" value="09:00">
+                </div>
+                <div class="form-group">
+                    <label for="hours">예상 소요 시간</label>
+                    <input type="number" id="hours" min="0.5" step="0.5" placeholder="예: 5" value="1">
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button class="btn-primary" onclick="addTask()">할 일 추가</button>
+                <button class="btn-secondary" onclick="clearForm()">초기화</button>
+            </div>
+        </div>
+
+        <!-- Calendar Section -->
+        <div id="calendarSection" class="calendar-section">
+            <div class="calendar-header">
+                <h2>학업 일정 캘린더</h2>
+                <div class="month-nav">
+                    <button onclick="previousMonth()">◀</button>
+                    <div class="month-display" id="monthDisplay"></div>
+                    <button onclick="nextMonth()">▶</button>
+                </div>
+            </div>
+
+            <div class="calendar-grid" id="calendarGrid"></div>
+        </div>
+
+        <!-- Task List -->
+        <div class="task-list-section" id="taskListSection" style="display: none; margin-top: 32px;">
+            <h3>📋 할 일 목록</h3>
+            <div id="taskList"></div>
+        </div>
+    </div>
+
+    <script>
+        // Supabase 설정
+        const SUPABASE_URL = 'https://jfthygnjrqfwyzsfys.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_VB13xsCJCqnR3OgB9LUZig_nUBRutJR';
+        const { createClient } = window.supabase;
+        const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let tasks = [];
+        let currentDate = new Date();
+        const colors = ['color-0', 'color-1', 'color-2', 'color-3', 'color-4', 'color-5'];
+        const frequentSubjects = ['공학용컴퓨터프로그래밍', '성균 논어', '공학기초수학'];
+        let isConnected = false;
+
+        // Supabase 연결 확인
+        async function checkConnection() {
+            try {
+                const { data, error } = await supabase.from('tasks').select('id').limit(1);
+                if (error) throw error;
+                isConnected = true;
+                updateConnectionStatus(true);
+                showAlert('Supabase 연결 성공! ☁️', 'success');
+                loadTasksFromDB();
+            } catch (error) {
+                isConnected = false;
+                updateConnectionStatus(false);
+                console.error('DB 연결 오류:', error);
+                showAlert('Supabase 연결 실패. 로컬 저장소를 사용합니다.', 'info');
+            }
+        }
+
+        function updateConnectionStatus(connected) {
+            const status = document.getElementById('connectionStatus');
+            if (connected) {
+                status.innerHTML = '✅ Supabase 연결됨';
+                status.className = 'header-status connected';
+            } else {
+                status.innerHTML = '⚠️ 로컬 저장소 사용 중';
+                status.className = 'header-status disconnected';
+            }
+        }
+
+        async function loadTasksFromDB() {
+            if (!isConnected) return;
+
+            try {
+                const { data, error } = await supabase.from('tasks').select('*').order('created_at', { ascending: false });
+                if (error) throw error;
+
+                tasks = data.map(row => ({
+                    id: row.id,
+                    subject: row.subject,
+                    task: row.task,
+                    deadline: row.deadline,
+                    time: row.time,
+                    hours: row.hours,
+                    hoursLeft: calculateTimeUntilDeadline(row.deadline, row.time),
+                    priority: calculatePriority(calculateTimeUntilDeadline(row.deadline, row.time), row.hours)
+                }));
+
+                scheduleTasksDays();
+                renderCalendar();
+                renderTaskList();
+            } catch (error) {
+                console.error('DB에서 데이터 로드 실패:', error);
+            }
+        }
+
+        async function saveTaskToDB(taskData) {
+            if (!isConnected) return null;
+
+            try {
+                const { data, error } = await supabase.from('tasks').insert([{
+                    subject: taskData.subject,
+                    task: taskData.task,
+                    deadline: taskData.deadline,
+                    time: taskData.time,
+                    hours: taskData.hours
+                }]).select();
+
+                if (error) throw error;
+                return data[0].id;
+            } catch (error) {
+                console.error('DB 저장 실패:', error);
+                return null;
+            }
+        }
+
+        async function deleteTaskFromDB(taskId) {
+            if (!isConnected) return;
+
+            try {
+                const { error } = await supabase.from('tasks').delete().eq('id', taskId);
+                if (error) throw error;
+            } catch (error) {
+                console.error('DB 삭제 실패:', error);
+            }
+        }
+
+        function getTodayDate() {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            return today;
+        }
+
+        function showAlert(message, type = 'danger') {
+            const alert = document.getElementById('alert');
+            alert.textContent = message;
+            alert.className = `alert show alert-${type}`;
+            setTimeout(() => {
+                alert.classList.remove('show');
+            }, 3000);
+        }
+
+        function showImpossibleModal(message) {
+            document.getElementById('modalDetail').innerHTML = message;
+            document.getElementById('impossibleModal').classList.add('show');
+        }
+
+        function closeModal() {
+            document.getElementById('impossibleModal').classList.remove('show');
+        }
+
+        // 과목명 자동완성
+        document.getElementById('subject').addEventListener('input', function() {
+            const input = this.value.trim().toLowerCase();
+            const suggestionsList = document.getElementById('subjectSuggestions');
+            
+            if (input.length === 0) {
+                suggestionsList.classList.remove('show');
+                return;
+            }
+
+            const filtered = frequentSubjects.filter(subject => 
+                subject.toLowerCase().includes(input)
+            );
+
+            if (filtered.length === 0) {
+                suggestionsList.classList.remove('show');
+                return;
+            }
+
+            suggestionsList.innerHTML = filtered.map(subject => {
+                const regex = new RegExp(`(${input})`, 'gi');
+                const highlighted = subject.replace(regex, '<strong>$1</strong>');
+                return `<div class="suggestion-item" onclick="selectSubject('${subject}')">${highlighted}</div>`;
+            }).join('');
+
+            suggestionsList.classList.add('show');
+        });
+
+        function selectSubject(subject) {
+            document.getElementById('subject').value = subject;
+            document.getElementById('subjectSuggestions').classList.remove('show');
+            document.getElementById('task').focus();
+        }
+
+        document.addEventListener('click', function(event) {
+            const subject = document.getElementById('subject');
+            const suggestions = document.getElementById('subjectSuggestions');
+            
+            if (event.target !== subject && !suggestions.contains(event.target)) {
+                suggestions.classList.remove('show');
+            }
+        });
+
+        function calculateTimeUntilDeadline(deadline, time) {
+            const today = getTodayDate();
+            const [hours, minutes] = time.split(':');
+            const deadlineDateTime = new Date(deadline);
+            deadlineDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+            
+            const diffMs = deadlineDateTime - today;
+            const hoursLeft = diffMs / (1000 * 60 * 60);
+            return hoursLeft;
+        }
+
+        function calculatePriority(hoursLeft, studyHours) {
+            if (hoursLeft < 0) return Infinity;
+            if (hoursLeft === 0) return 0;
+            return hoursLeft / studyHours;
+        }
+
+        function scheduleTasksDays() {
+            const dailyStudyHours = parseFloat(document.getElementById('dailyStudyHours').value) || 3;
+            
+            const sorted = [...tasks].sort((a, b) => a.priority - b.priority);
+            
+            sorted.forEach((task, index) => {
+                const today = getTodayDate();
+                const [hours, minutes] = task.time.split(':');
+                const deadline = new Date(task.deadline);
+                deadline.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+
+                const hoursLeftUntilDeadline = (deadline - today) / (1000 * 60 * 60);
+                const daysLeft = Math.ceil(hoursLeftUntilDeadline / 24);
+                const totalAvailableStudyHours = daysLeft * dailyStudyHours;
+
+                const scheduledDays = [];
+                
+                if (hoursLeftUntilDeadline >= task.hours) {
+                    const daysNeeded = Math.ceil(task.hours / dailyStudyHours);
+                    const startDate = new Date(today);
+                    startDate.setDate(startDate.getDate() + Math.max(0, daysLeft - daysNeeded));
+                    
+                    const endDate = new Date(deadline);
+                    endDate.setHours(0, 0, 0, 0);
+                    
+                    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+                        scheduledDays.push(new Date(d));
+                    }
+                } else {
+                    const endDate = new Date(deadline);
+                    endDate.setHours(0, 0, 0, 0);
+                    
+                    for (let d = new Date(today); d <= endDate; d.setDate(d.getDate() + 1)) {
+                        scheduledDays.push(new Date(d));
+                    }
+                }
+
+                task.scheduledDays = scheduledDays;
+                task.color = colors[index % colors.length];
+                task.deadlineDateTime = deadline;
+                task.totalAvailableStudyHours = totalAvailableStudyHours;
+                task.daysLeft = daysLeft;
+            });
+        }
+
+        async function addTask() {
+            const subject = document.getElementById('subject').value.trim();
+            const task = document.getElementById('task').value.trim();
+            const deadline = document.getElementById('deadline').value;
+            const time = document.getElementById('time').value;
+            const hours = parseFloat(document.getElementById('hours').value);
+            const dailyStudyHours = parseFloat(document.getElementById('dailyStudyHours').value);
+
+            if (!subject || !task || !deadline || !time || !hours) {
+                showAlert('모든 항목을 입력해주세요', 'danger');
+                return;
+            }
+
+            if (hours <= 0) {
+                showAlert('예상 소요 시간은 0보다 커야 합니다', 'danger');
+                return;
+            }
+
+            if (!dailyStudyHours || dailyStudyHours <= 0) {
+                showAlert('하루 공부 시간을 설정해주세요', 'danger');
+                return;
+            }
+
+            const hoursLeft = calculateTimeUntilDeadline(deadline, time);
+            if (hoursLeft < 0) {
+                showAlert('마감 기한이 지난 시간입니다', 'danger');
+                return;
+            }
+
+            const daysLeft = Math.ceil(hoursLeft / 24);
+            const totalAvailableStudyHours = daysLeft * dailyStudyHours;
+
+            if (hours > totalAvailableStudyHours) {
+                const deficitHours = (hours - totalAvailableStudyHours).toFixed(1);
+                const modalMsg = `
+                    <div>
+                        <strong>필요한 시간:</strong> ${hours}시간<br>
+                        <strong>가능한 시간:</strong> ${daysLeft}일 × ${dailyStudyHours}시간/일 = ${totalAvailableStudyHours.toFixed(1)}시간<br>
+                        <strong style="color: #e03131;">부족한 시간: ${deficitHours}시간</strong>
+                    </div>
+                `;
+                showImpossibleModal(modalMsg);
+                return;
+            }
+
+            const priority = calculatePriority(hoursLeft, hours);
+            const taskId = Date.now();
+            
+            const newTask = {
+                id: taskId,
+                subject,
+                task,
+                deadline,
+                time,
+                hours,
+                hoursLeft,
+                priority
+            };
+
+            // DB에 저장
+            if (isConnected) {
+                const dbId = await saveTaskToDB(newTask);
+                if (dbId) {
+                    newTask.id = dbId;
+                }
+            }
+
+            tasks.push(newTask);
+            showAlert('할 일이 추가되었습니다', 'success');
+            clearForm();
+            scheduleTasksDays();
+            renderCalendar();
+            renderTaskList();
+        }
+
+        function clearForm() {
+            document.getElementById('subject').value = '';
+            document.getElementById('task').value = '';
+            document.getElementById('deadline').value = '';
+            document.getElementById('time').value = '09:00';
+            document.getElementById('hours').value = '1';
+            document.getElementById('subjectSuggestions').classList.remove('show');
+        }
+
+        async function deleteTask(id) {
+            tasks = tasks.filter(t => t.id !== id);
+            if (isConnected) {
+                await deleteTaskFromDB(id);
+            }
+            if (tasks.length === 0) {
+                document.getElementById('calendarSection').classList.remove('active');
+                document.getElementById('taskListSection').style.display = 'none';
+            } else {
+                scheduleTasksDays();
+                renderCalendar();
+                renderTaskList();
+            }
+        }
+
+        function renderCalendar() {
+            if (tasks.length === 0) {
+                document.getElementById('calendarSection').classList.remove('active');
+                return;
+            }
+
+            document.getElementById('calendarSection').classList.add('active');
+
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+
+            document.getElementById('monthDisplay').textContent = `${year}.${String(month + 1).padStart(2, '0')}`;
+
+            const firstDay = new Date(year, month, 1);
+            const startDate = new Date(firstDay);
+            startDate.setDate(startDate.getDate() - firstDay.getDay());
+
+            const calendarGrid = document.getElementById('calendarGrid');
+            calendarGrid.innerHTML = '';
+
+            const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+            dayNames.forEach(day => {
+                const header = document.createElement('div');
+                header.className = 'day-header';
+                header.textContent = day;
+                calendarGrid.appendChild(header);
+            });
+
+            const currentDateObj = new Date(startDate);
+            for (let i = 0; i < 42; i++) {
+                const dayCell = document.createElement('div');
+                const cellDate = new Date(currentDateObj);
+                cellDate.setHours(0, 0, 0, 0);
+
+                dayCell.className = 'calendar-day';
+                if (currentDateObj.getMonth() !== month) {
+                    dayCell.classList.add('other-month');
+                }
+
+                const dayNumber = document.createElement('div');
+                dayNumber.className = 'day-number';
+                if (currentDateObj.getMonth() !== month) {
+                    dayNumber.classList.add('other-month');
+                }
+                dayNumber.textContent = currentDateObj.getDate();
+                dayCell.appendChild(dayNumber);
+
+                tasks.forEach(task => {
+                    if (task.scheduledDays) {
+                        const isScheduled = task.scheduledDays.some(d => {
+                            const compareDate = new Date(d);
+                            compareDate.setHours(0, 0, 0, 0);
+                            return compareDate.getTime() === cellDate.getTime();
+                        });
+
+                        if (isScheduled) {
+                            const scheduleDiv = document.createElement('div');
+                            scheduleDiv.className = `schedule-item ${task.color}`;
+                            scheduleDiv.textContent = `${task.subject}`;
+                            scheduleDiv.title = `${task.task} (${task.time})`;
+                            dayCell.appendChild(scheduleDiv);
+                        }
+                    }
+                });
+
+                calendarGrid.appendChild(dayCell);
+                currentDateObj.setDate(currentDateObj.getDate() + 1);
+            }
+        }
+
+        function renderTaskList() {
+            if (tasks.length === 0) {
+                document.getElementById('taskListSection').style.display = 'none';
+                return;
+            }
+
+            document.getElementById('taskListSection').style.display = 'block';
+
+            const sorted = [...tasks].sort((a, b) => a.priority - b.priority);
+            const taskList = document.getElementById('taskList');
+            
+            taskList.innerHTML = sorted.map((task, idx) => {
+                const deadline = new Date(task.deadline);
+                const deadlineStr = deadline.toLocaleDateString('ko-KR');
+                
+                return `
+                    <div class="task-item ${task.color}">
+                        <div class="task-item-header">
+                            <div>
+                                <div class="task-item-name">${idx + 1}. ${task.subject}</div>
+                                <div class="task-item-deadline">${task.task}</div>
+                            </div>
+                            <button class="delete-btn" onclick="deleteTask(${task.id})">×</button>
+                        </div>
+                        <div class="task-item-detail">
+                            마감: ${deadlineStr} ${task.time} | 소요: ${task.hours}시간 | 우선도: ${task.priority.toFixed(1)}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function previousMonth() {
+            currentDate.setMonth(currentDate.getMonth() - 1);
+            renderCalendar();
+        }
+
+        function nextMonth() {
+            currentDate.setMonth(currentDate.getMonth() + 1);
+            renderCalendar();
+        }
+
+        document.getElementById('dailyStudyHours').addEventListener('change', function() {
+            document.getElementById('dailyHourDisplay').textContent = this.value;
+        });
+
+        window.addEventListener('load', () => {
+            const today = getTodayDate();
+            const dateStr = today.toISOString().split('T')[0];
+            document.getElementById('deadline').min = dateStr;
+            
+            // Supabase 연결 확인 및 데이터 로드
+            checkConnection();
+        });
+
+        document.getElementById('hours').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addTask();
+        });
+
+        window.addEventListener('click', function(event) {
+            const modal = document.getElementById('impossibleModal');
+            if (event.target == modal) {
+                modal.classList.remove('show');
+            }
+        });
+    </script>
+</body>
+</html>
