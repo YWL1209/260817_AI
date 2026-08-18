@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Study Schedule Optimizer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f6f5f4;
+            color: #1a1a1a;
+            padding: 24px;
+            line-height: 1.55;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            background: #0a1530;
+            color: #ffffff;
+            padding: 48px 32px;
+            border-radius: 12px;
+            margin-bottom: 32px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 36px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            line-height: 1.2;
+        }
+
+        .header p {
+            font-size: 14px;
+            color: #a4a097;
+        }
+
+        /* Form Section */
+        .form-section {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 32px;
+            border: 1px solid #e5e3df;
+            margin-bottom: 32px;
+        }
+
+        .form-section h2 {
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            color: #1a1a1a;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: #37352f;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #c8c4be;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color 0.15s;
+            background: #ffffff;
+            color: #1a1a1a;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #5645d4;
+            box-shadow: 0 0 0 2px rgba(86, 69, 212, 0.1);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 28px;
+        }
+
+        button {
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background: #5645d4;
+            color: #ffffff;
+        }
+
+        .btn-primary:hover {
+            background: #4534b3;
+        }
+
+        .btn-primary:active {
+            background: #3a2a99;
+        }
+
+        .btn-primary:disabled {
+            background: #e5e3df;
+            color: #bbb8b1;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: #1a1a1a;
+            border: 1px solid #c8c4be;
+        }
+
+        .btn-secondary:hover {
+            border-color: #37352f;
+        }
+
+        /* Results Section */
+        .results-section {
+            display: none;
+        }
+
+        .results-section.active {
+            display: block;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .results-header h2 {
+            font-size: 22px;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+
+        .today-date {
+            font-size: 13px;
+            color: #787671;
+        }
+
+        /* Priority List */
+        .priority-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .priority-item {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #e5e3df;
+            display: grid;
+            grid-template-columns: 60px 1fr 1fr auto;
+            gap: 20px;
+            align-items: center;
+            transition: box-shadow 0.15s;
+        }
+
+        .priority-item:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+        }
+
+        @media (max-width: 768px) {
+            .priority-item {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+        }
+
+        .rank-badge {
+            background: #5645d4;
+            color: #ffffff;
+            width: 50px;
+            height: 50px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 18px;
+        }
+
+        .rank-badge.rank-2 { background: #d6b6f6; color: #391c57; }
+        .rank-badge.rank-3 { background: #e6e0f5; color: #5645d4; }
+        .rank-badge.rank-4 { background: #ede9e4; color: #37352f; }
+
+        .item-info h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 4px;
+        }
+
+        .item-info p {
+            font-size: 13px;
+            color: #787671;
+        }
+
+        .item-details {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .detail-row {
+            font-size: 13px;
+            color: #37352f;
+        }
+
+        .detail-label {
+            font-weight: 500;
+            color: #787671;
+        }
+
+        .score-badge {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .score-value {
+            font-size: 18px;
+            font-weight: 600;
+            color: #5645d4;
+        }
+
+        .score-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: #787671;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 48px;
+            color: #787671;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        .empty-state p {
+            font-size: 14px;
+        }
+
+        /* Alert */
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-bottom: 16px;
+            display: none;
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .alert-danger {
+            background: #ffe0e0;
+            color: #a02e6d;
+            border: 1px solid #ff99b2;
+        }
+
+        .alert-success {
+            background: #d9f3e1;
+            color: #0f5e2e;
+            border: 1px solid #95d5ac;
+        }
+
+        /* Pastel Cards Background */
+        .priority-item.tint-peach { background: linear-gradient(135deg, #ffe8d4 0%, #ffffff 100%); }
+        .priority-item.tint-rose { background: linear-gradient(135deg, #fde0ec 0%, #ffffff 100%); }
+        .priority-item.tint-mint { background: linear-gradient(135deg, #d9f3e1 0%, #ffffff 100%); }
+        .priority-item.tint-lavender { background: linear-gradient(135deg, #e6e0f5 0%, #ffffff 100%); }
+        .priority-item.tint-sky { background: linear-gradient(135deg, #dcecfa 0%, #ffffff 100%); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>📚 Study Schedule Optimizer</h1>
+            <p>과제와 시험을 효율적으로 관리하세요</p>
+        </div>
+
+        <!-- Alert -->
+        <div id="alert" class="alert"></div>
+
+        <!-- Form Section -->
+        <div class="form-section">
+            <h2>할 일 추가</h2>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="subject">과목명</label>
+                    <input type="text" id="subject" placeholder="예: 데이터베이스, 수학1">
+                </div>
+                <div class="form-group">
+                    <label for="task">할 일</label>
+                    <input type="text" id="task" placeholder="예: 과제 제출, 중간고사 준비">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="deadline">마감 기한</label>
+                    <input type="date" id="deadline">
+                </div>
+                <div class="form-group">
+                    <label for="hours">예상 소요 시간</label>
+                    <input type="number" id="hours" min="0.5" step="0.5" placeholder="예: 5" value="1">
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button class="btn-primary" onclick="addTask()">할 일 추가</button>
+                <button class="btn-secondary" onclick="clearForm()">초기화</button>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div id="resultsSection" class="results-section">
+            <div class="results-header">
+                <h2>우선순위 리스트</h2>
+                <div class="today-date" id="todayDate"></div>
+            </div>
+            <div id="priorityList" class="priority-list">
+                <div class="empty-state">
+                    <div class="empty-state-icon">📭</div>
+                    <p>아직 할 일이 없습니다</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let tasks = [];
+        const tints = ['tint-peach', 'tint-rose', 'tint-mint', 'tint-lavender', 'tint-sky'];
+        
+        function getTodayDate() {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            return today;
+        }
+
+        function setTodayDate() {
+            const today = getTodayDate();
+            const dateStr = today.toISOString().split('T')[0];
+            document.getElementById('deadline').min = dateStr;
+            
+            const options = { year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('todayDate').textContent = `오늘: ${today.toLocaleDateString('ko-KR', options)}`;
+        }
+
+        function showAlert(message, type = 'danger') {
+            const alert = document.getElementById('alert');
+            alert.textContent = message;
+            alert.className = `alert show alert-${type}`;
+            setTimeout(() => {
+                alert.classList.remove('show');
+            }, 3000);
+        }
+
+        function calculateDaysLeft(deadline) {
+            const today = getTodayDate();
+            const deadlineDate = new Date(deadline);
+            deadlineDate.setHours(0, 0, 0, 0);
+            const diffMs = deadlineDate - today;
+            const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+            return daysLeft;
+        }
+
+        function calculatePriority(daysLeft, hours) {
+            if (daysLeft < 0) return Infinity; // 지난 기한
+            if (daysLeft === 0) return 0; // 오늘 마감
+            return (daysLeft * 24) / hours; // 우선순위 스코어 (낮을수록 긴급)
+        }
+
+        function addTask() {
+            const subject = document.getElementById('subject').value.trim();
+            const task = document.getElementById('task').value.trim();
+            const deadline = document.getElementById('deadline').value;
+            const hours = parseFloat(document.getElementById('hours').value);
+
+            if (!subject || !task || !deadline || !hours) {
+                showAlert('모든 항목을 입력해주세요', 'danger');
+                return;
+            }
+
+            if (hours <= 0) {
+                showAlert('예상 소요 시간은 0보다 커야 합니다', 'danger');
+                return;
+            }
+
+            const daysLeft = calculateDaysLeft(deadline);
+            if (daysLeft < 0) {
+                showAlert('마감 기한이 지난 날짜입니다', 'danger');
+                return;
+            }
+
+            const priority = calculatePriority(daysLeft, hours);
+            
+            tasks.push({
+                subject,
+                task,
+                deadline,
+                hours,
+                daysLeft,
+                priority,
+                id: Date.now()
+            });
+
+            showAlert('할 일이 추가되었습니다', 'success');
+            clearForm();
+            renderPriorities();
+        }
+
+        function clearForm() {
+            document.getElementById('subject').value = '';
+            document.getElementById('task').value = '';
+            document.getElementById('deadline').value = '';
+            document.getElementById('hours').value = '1';
+        }
+
+        function deleteTask(id) {
+            tasks = tasks.filter(t => t.id !== id);
+            renderPriorities();
+        }
+
+        function renderPriorities() {
+            const resultsSection = document.getElementById('resultsSection');
+            const priorityList = document.getElementById('priorityList');
+
+            if (tasks.length === 0) {
+                resultsSection.classList.remove('active');
+                return;
+            }
+
+            resultsSection.classList.add('active');
+
+            const sorted = [...tasks].sort((a, b) => a.priority - b.priority);
+
+            priorityList.innerHTML = sorted.map((task, index) => {
+                const rank = index + 1;
+                const rankClass = rank === 1 ? '' : `rank-${Math.min(rank, 4)}`;
+                const tint = tints[index % tints.length];
+                
+                const deadlineDate = new Date(task.deadline);
+                const options = { month: 'short', day: 'numeric' };
+                const deadlineStr = deadlineDate.toLocaleDateString('en-US', options);
+
+                return `
+                    <div class="priority-item ${tint}">
+                        <div class="rank-badge ${rankClass}">${rank}</div>
+                        <div class="item-info">
+                            <h3>${task.subject}</h3>
+                            <p>${task.task}</p>
+                        </div>
+                        <div class="item-details">
+                            <div class="detail-row">
+                                <span class="detail-label">마감:</span> ${deadlineStr} (${task.daysLeft}일 남음)
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">소요시간:</span> ${task.hours}시간
+                            </div>
+                        </div>
+                        <div class="score-badge">
+                            <div class="score-value">${task.priority.toFixed(1)}</div>
+                            <div class="score-label">Score</div>
+                            <button class="btn-secondary" style="margin-top: 8px; padding: 6px 12px; font-size: 12px;" onclick="deleteTask(${task.id})">삭제</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 초기화
+        window.addEventListener('load', () => {
+            setTodayDate();
+        });
+
+        // Enter 키 지원
+        document.getElementById('hours').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addTask();
+        });
+        document.getElementById('deadline').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addTask();
+        });
+    </script>
+</body>
+</html>
